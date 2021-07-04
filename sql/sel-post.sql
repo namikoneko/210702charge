@@ -1,1 +1,1 @@
-select updated from post;
+select * from post;

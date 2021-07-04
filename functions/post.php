@@ -1,17 +1,90 @@
 <?php
  
-function postdel($postid){
-    $row = ORM::for_table('post')->find_one($postid);
-    $row->delete();
-  Flight::redirect('/posts/');
+function postsum($title){
+  if($title == "all"){
+    Flight::redirect('/posts/');
+  }else{
+$sql = <<<EOD
+  SELECT date, ttl2, sum(cnt) as sum
+  FROM post 
+  where title = "$title"
+  group by ttl2
+  order by date desc
+EOD;
+  $rows = ORM::for_table('post')->raw_query($sql)->find_array();
+//  flight::json($rows);
+  //$rows = ORM::for_table('post')->raw_query($sql)->find_many();
+  $cntsum = ORM::for_table('post')->where("title",$title)->sum("cnt");
+
+  Flight::view()->assign('title', $title);
+  Flight::view()->assign('cntsum', $cntsum);
+  Flight::view()->assign('rows', $rows);
+  Flight::view()->display('postsum.tpl');
+
+//    $rows = ORM::for_table('post')
+//    ->where("title",$title)->group_by('ttl2')
+//    ->sum("cnt");
+//    //->find_many();
+//    echo $title;
+    //Flight::redirect('/postsum/' . $title);
+  }
+
 }
 
-function postcp($postid){
+function postfindtitle($title){
+  require_once './functions/pagenum.php';
+  $rowcnt = ORM::for_table('post')->where("title",$title)->count();
+  $p = Flight::request()->query->p;
+  if(!isset($p)){ $p = 0; }
+  $page = $p * $num;
+$sql = <<<EOD
+  SELECT *,
+  time(start,"unixepoch","localtime") as start,
+  time(end,"unixepoch","localtime") as end,
+   (end - start) as diff
+  FROM post 
+  where title like "$title"
+  order by updated desc
+  limit $page, $num
+EOD;
+  $rows = ORM::for_table('post')->raw_query($sql)->find_many();
+//  $rows = ORM::for_table('post')->where("title",$title)->find_many();
+  Flight::view()->assign('title', $title);
+  foreach($rows as $row){
+    $row["diff"] = floor($row["diff"] / 60);
+  }
+  Flight::view()->assign('rows', $rows);
+  $sum = ORM::for_table('post')->where("title",$title)->sum("cnt");
+  Flight::view()->assign('sum', $sum);
+  Flight::view()->assign('p', $p);
+  Flight::view()->assign('rowcnt', $rowcnt);
+  Flight::view()->assign('num', $num);
+  Flight::view()->display('posts.tpl');
+}
+
+function postdel($postid,$title){
+    $row = ORM::for_table('post')->find_one($postid);
+    $row->delete();
+  if($title == "all"){
+    Flight::redirect('/posts/');
+  }else{
+    Flight::redirect('/postfindtitle/' . $title);
+  }
+}
+
+function postcp($postid,$title){
   $row = ORM::for_table('post')->create();
   $rowcp = ORM::for_table('post')->find_one($postid);
   $row->title = $rowcp->title;
+  $row->ttl2 = $rowcp->ttl2;
+  $row->date = date('Y-m-d');
+  $row->updated = time();
   $row->save();
-  Flight::redirect('/posts');
+  if($title == "all"){
+    Flight::redirect('/posts/');
+  }else{
+    Flight::redirect('/postfindtitle/' . $title);
+  }
 }
 
 function postinsexe(){
@@ -24,81 +97,88 @@ function postinsexe(){
     Flight::redirect('/posts');
 }
 
-function postupdexe(){
+function postupdexe($title){
+//echo $title;
   $postid = Flight::request()->data->postid;
+  $rows = ORM::for_table('post')
+  ->where("title",$title)
+  ->find_result_set()
+  ->set('title', Flight::request()->data->title)
+//  ->set('ttl2', Flight::request()->data->ttl2)
+  ->save();
+  $title = Flight::request()->data->title;//title入れ直し
   $row = ORM::for_table('post')->find_one($postid);
-  $row->title = Flight::request()->data->title;
+  $row->date = Flight::request()->data->date;
   $row->ttl2 = Flight::request()->data->ttl2;
   $row->cnt = Flight::request()->data->cnt;
   $row->text = Flight::request()->data->text;
   $row->save();
-  Flight::redirect('/posts/');
+  if($title == "all"){
+    Flight::redirect('/posts/');
+  }else{
+    Flight::redirect('/postfindtitle/' . $title);
+  }
 }
 
-function postupd($postid){
+function postupd($postid,$title){
   $row = ORM::for_table('post')->find_one($postid);
+  if($title == ""){ $title = "all"; }
+  Flight::view()->assign('title', $title);
   Flight::view()->assign('row', $row);
   Flight::view()->display('postupd.tpl');
 }
 
-function postupdend($postid){
+function postupdend($postid,$title){
   $row = ORM::for_table('post')->find_one($postid);
   $row->end = time();
   $row->save();
-  Flight::redirect('/posts/');
+  if($title == "all"){
+    Flight::redirect('/posts/');
+  }else{
+    Flight::redirect('/postfindtitle/' . $title);
+  }
 }
 
-function postupdstart($postid){
+function postupdstart($postid,$title){
   $row = ORM::for_table('post')->find_one($postid);
   $row->start = time();
   $row->save();
-  Flight::redirect('/posts/');
+  if($title == "all"){
+    Flight::redirect('/posts/');
+  }else{
+    Flight::redirect('/postfindtitle/' . $title);
+  }
 }
 
-//  Flight::view()->assign('row', $row);
-//    $row = ORM::for_table('post')->create();
-//    //$row->title = Flight::request()->data->title;
-//    $row->text = Flight::request()->data->text;
-//    $row->date = time();
-//    $row->save();
-//    $row = ORM::for_table('map')->create();//map insert
-//    $row->tagid = $tagid;
-//    $row->postid = ORM::for_table('post')->max('id');
-//    $row->save();
-//    Flight::redirect('/tag/' . $tagid);
-//}
-
 function posts(){
-//  $rows = ORM::for_table('post')->find_array();
+  require_once './functions/pagenum.php';
+  $rowcnt = ORM::for_table('post')->count();
+  $p = Flight::request()->query->p;
+  if(!isset($p)){ $p = 0; }
+  $page = $p * $num;
 $sql = <<<EOD
-  SELECT *, (end - start) as diff
+  SELECT *,
+  time(start,"unixepoch","localtime") as start,
+  time(end,"unixepoch","localtime") as end,
+   (end - start) as diff
   FROM post 
   order by updated desc
+  limit $page, $num
 EOD;
-  //$rows = ORM::for_table('post')->raw_query($sql)->find_array();
+  //limit 0,5 
+//  echo $page;
+//  echo $num;
   $rows = ORM::for_table('post')->raw_query($sql)->find_many();
-  //flight::json($rows);
-
-  //echo($rows[1]['title']);
-//  $rows = ORM::for_table('post')->find_many();
-//  //$i = 0;
-  foreach($rows as $row){
-  //echo($row['start']);
-//  echo(date("H:i:s",$row['start']));
-//  echo("<br>");
-//    $rows2[$i]["start"] = date("H:i:s", $row["start"]);
-    $row["start"] = date("H:i", $row["start"]);
-    if($row["start"] == "09:00"){ $row["start"] = "-"; }
-    $row["end"] = date("H:i", $row["end"]);
-    if($row["end"] == "09:00"){ $row["end"] = "-"; }
-    $row["diff"] = floor($row["diff"] / 60);
-//    //$row["diff"] = ((($row["end"]) - ($row["start"])));///60
-//    //$row["start"] = time();
-    //$i++;
-    //echo $i;
-  }
+//  $rows = ORM::for_table('post')->raw_query($sql)->find_array();
 //  flight::json($rows);
+
+  foreach($rows as $row){
+    $row["diff"] = floor($row["diff"] / 60);
+  }
+  Flight::view()->assign('title', "all");
+  Flight::view()->assign('p', $p);
+  Flight::view()->assign('rowcnt', $rowcnt);
+  Flight::view()->assign('num', $num);
   Flight::view()->assign('rows', $rows);
   Flight::view()->display('posts.tpl');
-// //echo $i;
 }

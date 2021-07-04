@@ -1,14 +1,18 @@
 <?php
 
 //routing
+Flight::route('/postsum/@title', "postsum");//read
+Flight::route('/postupdstart2/@id', "postupdstart2");//
+Flight::route('/postinsexe2', "postinsexe2");//
 
-Flight::route('/postdel/@postid', "postdel");//
-Flight::route('/postcp/@postid', "postcp");//
+Flight::route('/postfindtitle/@title', "postfindtitle");//
+Flight::route('/postdel/@postid/@title', "postdel");//
+Flight::route('/postcp/@postid/@title', "postcp");//
 Flight::route('/postinsexe', "postinsexe");//
-Flight::route('/postupdexe', "postupdexe");//
-Flight::route('/postupd/@id', "postupd");//
-Flight::route('/postupdend/@id', "postupdend");//
-Flight::route('/postupdstart/@id', "postupdstart");//
+Flight::route('/postupdexe/@title', "postupdexe");//
+Flight::route('/postupd/@id/@title', "postupd");//
+Flight::route('/postupdend/@id/@title', "postupdend");//
+Flight::route('/postupdstart/@id/@title', "postupdstart");//
 Flight::route('/posts', "posts");//read
 Flight::route('/test', "test");//read
 

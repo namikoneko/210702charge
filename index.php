@@ -1,6 +1,6 @@
 <?php
 ini_set('display_errors', 1);
-date_default_timezone_set('Asia/Tokyo');
+//date_default_timezone_set('Asia/Tokyo');
 require_once '../libs/flight/Flight.php';
 require_once '../libs/Michelf/MarkdownExtra.inc.php';
 
@@ -22,6 +22,7 @@ Flight::register('view', 'Smarty', array(), function($smarty){
     $smarty->config_dir = './config/';
     $smarty->cache_dir = './cache/';
 });
+
 
 function test(){
   echo "tags!";
